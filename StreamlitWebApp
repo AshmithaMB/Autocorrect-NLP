@@ -1,0 +1,59 @@
+import pandas as pd
+import re
+import textdistance
+from collections import Counter
+import streamlit as st
+
+# Read the text file and extract words
+words = []
+
+with open("C:/Users/ashut/Downloads/sadhguru_on_navaratri.txt", 'r', encoding='utf-8') as tmp:
+    files = tmp.read()
+    files = files.lower()
+    words = re.findall('\w+', files)
+
+# Calculate word frequencies and probabilities
+frequency_words = {}
+frequency_words = Counter(words)
+
+total_words = sum(frequency_words.values())
+probability_of_words = {word: frequency_words[word] / total_words for word in frequency_words}
+
+unique_words = set(words)
+
+def autocorrect(word):
+    word = word.lower()
+
+    if word in unique_words:
+        return "It appears that your word choice is accurate"
+
+    similarities = [(1 - textdistance.Jaccard(qval=2).distance(word, w)) for w in unique_words]
+
+    df = pd.DataFrame({'Word': list(unique_words), 'Similarity': similarities})
+    df = df.merge(pd.DataFrame.from_dict(probability_of_words, orient='index', columns=['Probabilities']), left_on='Word', right_index=True)
+    df = df.sort_values(['Similarity', 'Probabilities'], ascending=False).head()
+    
+    return list(df['Word'])
+
+def main():
+    st.title("Autocorrect Application")
+
+    # Get user input
+    user_input = st.text_input("Enter a line:")
+
+    if user_input:
+        words = user_input.split()
+        suggestions = []
+
+        for word in words:
+            if word.lower() not in unique_words:
+                suggestions.append(autocorrect(word))
+
+        if len(suggestions) > 0:
+            st.write("Did you mean:")
+            st.write(suggestions)
+        else:
+            st.write("No misspelled words found.")
+
+if __name__ == "__main__":
+    main()
